@@ -72,3 +72,4 @@ C:\Users\CdemyTeilnehmer\Downloads\UiTC_v44_BA_Win\AlwaysBeNakedPlugin\obj\Relea
 C:\Users\CdemyTeilnehmer\Downloads\UiTC_v44_BA_Win\AlwaysBeNakedPlugin\obj\Release\net40\AlwaysBe.47A2402C.Up2Date
 C:\Users\CdemyTeilnehmer\Downloads\UiTC_v44_BA_Win\AlwaysBeNakedPlugin\obj\Release\net40\AlwaysBeNaked.dll
 C:\Users\CdemyTeilnehmer\Downloads\UiTC_v44_BA_Win\AlwaysBeNakedPlugin\obj\Release\net40\AlwaysBeNaked.pdb
+C:\Users\CdemyTeilnehmer\Downloads\UiTC_v44_BA_Win\AlwaysBeNakedPlugin\obj\Release\net40\AlwaysBeNakedPlugin.sourcelink.json
