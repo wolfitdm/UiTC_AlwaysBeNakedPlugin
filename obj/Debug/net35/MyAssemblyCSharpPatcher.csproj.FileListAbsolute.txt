@@ -1,6 +1,0 @@
-C:\Users\CdemyTeilnehmer\Downloads\UiTC_v44_BA_Win\MyAssemblyCSharpPatcher\obj\Debug\net35\MyAssemblyCSharpPatcher.csproj.AssemblyReference.cache
-C:\Users\CdemyTeilnehmer\Downloads\UiTC_v44_BA_Win\MyAssemblyCSharpPatcher\obj\Debug\net35\MyPluginInfo.cs
-C:\Users\CdemyTeilnehmer\Downloads\UiTC_v44_BA_Win\MyAssemblyCSharpPatcher\obj\Debug\net35\MyAssemblyCSharpPatcher.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\CdemyTeilnehmer\Downloads\UiTC_v44_BA_Win\MyAssemblyCSharpPatcher\obj\Debug\net35\MyAssemblyCSharpPatcher.AssemblyInfoInputs.cache
-C:\Users\CdemyTeilnehmer\Downloads\UiTC_v44_BA_Win\MyAssemblyCSharpPatcher\obj\Debug\net35\MyAssemblyCSharpPatcher.AssemblyInfo.cs
-C:\Users\CdemyTeilnehmer\Downloads\UiTC_v44_BA_Win\MyAssemblyCSharpPatcher\obj\Debug\net35\MyAssemblyCSharpPatcher.csproj.CoreCompileInputs.cache
