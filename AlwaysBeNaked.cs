@@ -511,7 +511,7 @@ namespace AlwaysBeNaked
 
             try
             {
-                GlobalObjects_UW.isDevBuild = true;
+                GlobalObjects_UW.isDevBuild = false;
             }
             catch (Exception e)
             {
@@ -535,7 +535,7 @@ namespace AlwaysBeNaked
 
             try
             {
-                GlobalObjects_UW.isDebugMode = true;
+                GlobalObjects_UW.isDebugMode = false;
             }
             catch (Exception e)
             {
@@ -543,7 +543,7 @@ namespace AlwaysBeNaked
 
             try
             {
-                GlobalObjects_UW.showInternalDebug = true;
+                GlobalObjects_UW.showInternalDebug = false;
             }
             catch (Exception e)
             {
@@ -563,8 +563,8 @@ namespace AlwaysBeNaked
             setOldSettings();
             GlobalObjects_UW_setVar("showDevDebug", true);
             GlobalObjects_UW_setVar("isDevBuild", true);
-            GlobalObjects_UW_setVar("isDebugMode", true);
-            GlobalObjects_UW_setVar("showMovePoints", true);
+            GlobalObjects_UW_setVar("isDebugMode", false);
+            GlobalObjects_UW_setVar("showMovePoints", false);
             GlobalObjects_UW_setVar("ignoreChoiceReqs", true);
             GlobalObjects_UW_setVar("overpowerStars", true);
             GlobalObjects_UW_setVar("accessAllClothes", true);
@@ -573,7 +573,7 @@ namespace AlwaysBeNaked
             GlobalObjects_UW_setVar("cheatsOn", true);
             GlobalObjects_UW_setVar("isVersionCheats", true);
             GlobalObjects_UW_setVar("isVersionExtended", true);
-            GlobalObjects_UW_setVar("showInternalDebug", true);
+            GlobalObjects_UW_setVar("showInternalDebug", false);
             GlobalObjects_UW_setVar("isFurries", true);
             GlobalObjects_UW_setVar("isSuperDebugging", true);
             GlobalObjects_UW_setVar("allowCumShake", true);
