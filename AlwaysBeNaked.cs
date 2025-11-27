@@ -1,61 +1,187 @@
 ﻿using BepInEx;
+using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Unity.Mono;
 using HarmonyLib;
-using BepInEx;
-using System.Reflection;
 using System;
+using System.ComponentModel;
+using System.Reflection;
+using System.Collections.Generic;
+using System.Reflection.Emit;
+using UnityEngine;
+using static UnityEngine.InputSystem.InputRemoting;
+using System.Linq;
 
 namespace AlwaysBeNaked
 {
-
     [BepInPlugin("com.wolfitdm.AlwaysBeNaked", "AlwaysBeNaked Plugin", "1.0.0.0")]
     public class AlwaysBeNaked : BaseUnityPlugin
     {
         internal static new ManualLogSource Logger;
-
         public AlwaysBeNaked()
         {
+        }
+
+        public static Type MyGetType(string originalClassName)
+        {
+            return Type.GetType(originalClassName+",Assembly-CSharp");
+        }
+
+        public static Type oldMyGetType(string originalClassName)
+        {
+            Type originalClass = null;
+
+            try
+            {
+                switch (originalClassName)
+                {
+                    case "GlobalObjects_UW":
+                        {
+                            originalClass = typeof(GlobalObjects_UW);
+                        }
+                        break;
+
+                    case "Character_Clothes_UW":
+                        {
+                            originalClass = typeof(Character_Clothes_UW);
+                        }
+                        break;
+
+                    case "LevelManager_UW":
+                        {
+                            originalClass = typeof(LevelManager_UW);
+                        }
+                        break;
+
+                    default:
+                        {
+                            originalClass = MyGetType(originalClassName);
+                        }
+                        break;
+                }
+            }
+            catch (Exception e)
+            {
+                originalClass = null;
+            }
+
+
+            if (originalClass == null)
+            {
+                Logger.LogInfo($"GetType {originalClassName} == null");
+                return null;
+            }
+
+            return originalClass;
+        }
+
+        public static void PatchHarmonyMethod(string originalClassName, string originalMethodName, string patchedMethodName, bool usePrefix, bool usePostfix)
+        {
+            // Create a new Harmony instance with a unique ID
+            var harmony = new Harmony("com.wolfitdm.AlwaysBeNaked");
+
+            Type originalClass = null;
+
+            originalClass = MyGetType(originalClassName);
+
+            if (originalClass == null)
+            {
+                Logger.LogInfo($"GetType {originalClassName} == null");
+                return;
+            }
+
+            // Or apply patches manually
+            MethodInfo original = AccessTools.Method(originalClass, originalMethodName);
+
+            if (original == null)
+            {
+                Logger.LogInfo($"AccessTool.Method original {originalClassName} == null");
+                return;
+            }
+
+            MethodInfo patched = AccessTools.Method(typeof(AlwaysBeNaked), patchedMethodName);
+
+            if (patched == null)
+            {
+                Logger.LogInfo($"AccessTool.Method patched {patchedMethodName} == null");
+                return;
+
+            }
+
+            HarmonyMethod patchedMethod = new HarmonyMethod(patched);
+            var prefixMethod = usePrefix ? patchedMethod : null;
+            var postfixMethod = usePostfix ? patchedMethod : null;
+
+            harmony.Patch(original,
+                prefix: prefixMethod,
+                postfix: postfixMethod);
+        }
+
+        public static void PatchHarmonyMethodPostfix(string originalClassName, string originalMethodName)
+        {
+            PatchHarmonyMethod(originalClassName, originalMethodName, originalMethodName, false, true);
         }
 
         private void Awake()
         {
             // Plugin startup logic
             Logger = base.Logger;
-            Harmony.CreateAndPatchAll(typeof(AlwaysBeNaked));
-            // Create a new Harmony instance with a unique ID
-            var harmony = new Harmony("com.wolfitdm.AlwaysBeNaked");
+            //Harmony.CreateAndPatchAll(typeof(AlwaysBeNaked));
+            PatchHarmonyMethodPostfix("Character_Clothes_UW", "CheckAllClothes_Player");
+            PatchHarmonyMethodPostfix("Character_Clothes_UW", "StartScripts");
+            PatchHarmonyMethodPostfix("LevelManager_UW", "LoadLevel");
+            PatchHarmonyMethodPostfix("GlobalObjects_UW", "CheckVersionEXCHBA");
             Logger.LogInfo($"Plugin AlwaysBeNaked is loaded!");
         }
 
 
-        [HarmonyPatch(typeof(Character_Clothes_UW), "CheckAllClothes_Player")] // Specify target method with HarmonyPatch attribute
-        [HarmonyPostfix]                              // There are different patch types. Prefix code runs before original code
+        //[HarmonyPatch(typeof(Character_Clothes_UW), "CheckAllClothes_Player")] // Specify target method with HarmonyPatch attribute
+        //[HarmonyPostfix]                              // There are different patch types. Prefix code runs before original code
         static void CheckAllClothes_Player(bool updateBreasts, bool updateCurs, object __instance)
         {
-            Character_Clothes_UW _this = (Character_Clothes_UW)__instance;
-            if (_this.isPlayer)
-            {
-                _this.hasPantsNow = true;
-                _this.hasShirtNow = true;
-            }
+            SetPlayerHavePantsAndSHirt(__instance);
         }
 
-        [HarmonyPatch(typeof(Character_Clothes_UW), "StartScripts")] // Specify target method with HarmonyPatch attribute
-        [HarmonyPostfix]                                            // There are different patch types. Prefix code runs before original code
+        //[HarmonyPatch(typeof(Character_Clothes_UW), "StartScripts")] // Specify target method with HarmonyPatch attribute
+        //[HarmonyPostfix]                                            // There are different patch types. Prefix code runs before original code
         static void StartScripts(object __instance)
         {
-            Character_Clothes_UW _this = (Character_Clothes_UW)__instance;
-            if (_this.isPlayer)
+            SetPlayerHavePantsAndSHirt(__instance);
+        }
+
+        static void SetPlayerHavePantsAndSHirt(object __instance)
+        {
+            try
             {
-                _this.hasPantsNow = true;
-                _this.hasShirtNow = true;
+                Character_Clothes_UW _this = (Character_Clothes_UW)__instance;
+                if (_this.isPlayer)
+                {
+                    _this.hasPantsNow = true;
+                    _this.hasShirtNow = true;
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+                Logger.LogInfo(e.ToString());
             }
         }
 
-        [HarmonyPatch(typeof(GlobalObjects_UW), "CheckVersionEXCHBA")]
-        [HarmonyPostfix]
-        static void GlobalObjects_UW_cctor_run()
+        //[HarmonyPatch(typeof(LevelManager_UW), "LevelManager_LoadLevel")]
+        //[HarmonyPostfix]
+        static void LoadLevel(ELevels newLevel, int spawnNum, bool checkEvents, object __instance)
+        {
+            GlobalObjects_UW_cctor_run();
+        }
+
+        //[HarmonyPatch(typeof(GlobalObjects_UW), "CheckVersionEXCHBA")]
+        //[HarmonyPostfix]
+        static void CheckVersionEXCHBA()
+        {
+            GlobalObjects_UW_cctor_run();
+        }
+
+        static void setOldSettings()
         {
             //init settings
             /*try
@@ -210,41 +336,434 @@ namespace AlwaysBeNaked
             catch (Exception e)
             {
                 Console.WriteLine(e.ToString());
+                Logger.LogInfo(e.ToString());
+                GlobalObjects_UW_setVar("isDevBuild", true);
+                GlobalObjects_UW_setVar("isDebugMode", true);
+                GlobalObjects_UW_setVar("showMovePoints", true);
+                GlobalObjects_UW_setVar("testAnimVals", false);
+                GlobalObjects_UW_setVar("forceNudity", 0);
+                GlobalObjects_UW_setVarEnum("forceDickType", "EDickType.None");
+                GlobalObjects_UW_setVar("allowCumShake", true);
+                GlobalObjects_UW_setVar("disableScreenFade", true);
+                GlobalObjects_UW_setVarEnum("forceSeasonType", "ESeasonType.NONE");
+                GlobalObjects_UW_setVarEnum("forceHolidayType", EHolidayType.NONE");
+                GlobalObjects_UW_setVar("disablePregnancy", true);
+                GlobalObjects_UW_setVar("pregnancyInfoCheat", true);
+                GlobalObjects_UW_setVar("pregnantBelly", true);
+                GlobalObjects_UW_setVar("hidePregnantBelly", true);
+                GlobalObjects_UW_setVar("isRandomNPCSize", true);
+                GlobalObjects_UW_setVar("boobBouncingPower", 0);
+                GlobalObjects_UW_setVar("eyesOverHairs", true);
+                GlobalObjects_UW_setVar("dontCleanSperm", true);
+                GlobalObjects_UW_setVar("stopTimeFlow", true);
+                GlobalObjects_UW_setVarEnum("lockLW", "EThresholdsLewdness.Off");
+                GlobalObjects_UW_setVar("npcDickSize", 1f);
+                GlobalObjects_UW_setVar("isSteam", false);
+                GlobalObjects_UW_setVar("cheatsOn", true);
+                GlobalObjects_UW_setVar("isVersionCheats", true);
+                GlobalObjects_UW_setVar("isVersionExtended", true);
+                GlobalObjects_UW_setVar("enc", 78);
+                GlobalObjects_UW_setVar("xrayDickSharesNPCSkin", true);
+                GlobalObjects_UW_setVar("moveOnInteraction", true);
+                GlobalObjects_UW_setVarEnum("curDifficulty", "EDifficultyTypes.NORMAL");
+                GlobalObjects_UW_setVar("allowIdleInDialogue", true);
+                GlobalObjects_UW_setVar("backgroundSkipsDialogue", true);
+                GlobalObjects_UW_setVar("allowedBodyTypes", 0);
+                GlobalObjects_UW_setVar("disableRandomNPCs", false);
+                GlobalObjects_UW_setVar("isRunToggled", true);
+                GlobalObjects_UW_setVar("showInternalDebug", true);
+                GlobalObjects_UW_setVar("isAndroid", false);
+                GlobalObjects_UW_setVar("isSuperDebugging", true);
+                GlobalObjects_UW_setVar("preloadDialogues", true);
+                GlobalObjects_UW_setVar("biggerAndroidUI", false);
+                GlobalObjects_UW_setVar("tooltipFontSize", 30);
+                GlobalObjects_UW_setVarEnum("seasonType", "ESeasonType.NONE");
+                GlobalObjects_UW_setVarEnum("holidayType", "EHolidayType.NONE");
+                GlobalObjects_UW_setVar("moodFilter", true);
+                GlobalObjects_UW_setVar("useUnityFont", false);
+                GlobalObjects_UW_setVar("enableHolidays", true);
+                GlobalObjects_UW_setVar("useKeyboardOnly", false);
+                GlobalObjects_UW_setVar("allowMaleMoans", true);
+                GlobalObjects_UW_setVar("showUseIcons", true);
+                GlobalObjects_UW_setVar("showXRay", true);
+                GlobalObjects_UW_setVar("allowXRay", true);
+                GlobalObjects_UW_setVar("showCutIns", true);
+                GlobalObjects_UW_setVar("showCutInsXRay", true);
+                GlobalObjects_UW_setVar("showMoans", true);
+                GlobalObjects_UW_setVar("allowHats", true);
+                GlobalObjects_UW_setVar("allowGlasses", true);
+                GlobalObjects_UW_setVar("isClock12", false);
+                GlobalObjects_UW_setVar("isDialTransparent", true);
+                GlobalObjects_UW_setVar("isAutoAnimState", true);
+                GlobalObjects_UW_setVar("gameScreenModeStr", "Windowed");
+                GlobalObjects_UW_setVar("gameResolutionWidth", 1920);
+                GlobalObjects_UW_setVar("gameResolutionHeight", 1080);
+                GlobalObjects_UW_setVar("is60FPS", true);
+                GlobalObjects_UW_setVar("isVSync", true);
+                GlobalObjects_UW_setVar("autoSaveType", 2);
+                GlobalObjects_UW_setVar("allowAhegao", true);
+                GlobalObjects_UW_setVar("expressionSoundChance", 50);
+                GlobalObjects_UW_setVar("idleChance", 80);
+                GlobalObjects_UW_setVar("hatChance", 20);
+                GlobalObjects_UW_setVar("glassesChance", 20);
+                GlobalObjects_UW_setVar("frecklesChance", 30);
+                GlobalObjects_UW_setVar("beardChance", 30);
+                GlobalObjects_UW_setVar("mustacheChance", 30);
+                GlobalObjects_UW_setVar("cheeksChance", 30);
+                GlobalObjects_UW_setVar("bodyNormalChance", 100);
+                GlobalObjects_UW_setVar("bodyMuscledChance", 100);
+                GlobalObjects_UW_setVar("bodyFatChance", 0);
+                GlobalObjects_UW_setVar("bodySkinnyChance", 100);
+                GlobalObjects_UW_setVar("dickThinShortChance", 100);
+                GlobalObjects_UW_setVar("dickThinNormalChance", 100);
+                GlobalObjects_UW_setVar("dickThinLongChance", 100);
+                GlobalObjects_UW_setVar("dickNormalShortChance", 100);
+                GlobalObjects_UW_setVar("dickNormalNormalChance", 100);
+                GlobalObjects_UW_setVar("dickNormalLongChance", 100);
+                GlobalObjects_UW_setVar("dickFatShortChance", 100);
+                GlobalObjects_UW_setVar("dickFatNormalChance", 100);
+                GlobalObjects_UW_setVar("dickFatLongChance", 100);
+                GlobalObjects_UW_setVar("femaleBreastSizeMin", 10);
+                GlobalObjects_UW_setVar("femaleBreastSizeMax", 90);
+                GlobalObjects_UW_setVar("qualityLevel", 0);
+                GlobalObjects_UW_setVar("waitForNPCsToLoad", true);
+                GlobalObjects_UW_setVar("zoomInOnSex", false);
+                GlobalObjects_UW_setVar("zoomOutOnDialogueExit", false);
+                GlobalObjects_UW_setVar("curMenuTheme", 0);
+                GlobalObjects_UW_setVar("canAnimateBoobs", true);
+                GlobalObjects_UW_setVar("canAnimateHairsSkirts", true);
+                GlobalObjects_UW_setVar("npcLoaderAmount", 0);
+                GlobalObjects_UW_setVar("isSpecial", false);
+                GlobalObjects_UW_setVar("isSaveLoaded", false);
+                GlobalObjects_UW_setVar("isMoaning", false);
+                GlobalObjects_UW_setVar("isLewd", false);
+                GlobalObjects_UW_setVar("isEro", true);
+                GlobalObjects_UW_setVar("isRaining", false);
+                GlobalObjects_UW_setVar("isInAnimState", false);
+                GlobalObjects_UW_setVar("showAnimState", false);
+                GlobalObjects_UW_setVar("isSceneLoaded", false);
+                GlobalObjects_UW_setVar("isSleeping", false);
+                GlobalObjects_UW_setVar("disNPCs", false);
+                GlobalObjects_UW_setVar("IsLoadedPosition", false);
+                GlobalObjects_UW_setVar("isVirginityLocked", false);
+                GlobalObjects_UW_setVar("isHotkeysBlocked", false);
+                GlobalObjects_UW_setVar("camReadyToZoom", false);
+                GlobalObjects_UW_setVar("fontSizePC", 40);
+                GlobalObjects_UW_setVar("fontSizeAndroid", 60);
+                GlobalObjects_UW_setVar("lastMovePoint", 0);
+                GlobalObjects_UW_setVar("lastAutoSave", 0);
+                GlobalObjects_UW_setVar("lastQuickSave", 0);
+                GlobalObjects_UW_setVar("spawnOnLoadCar", false);
+                GlobalObjects_UW_setVar("spawnOnLoadTaxi", false);
+                GlobalObjects_UW_setVar("doOncePopUp", false);
+                GlobalObjects_UW_setVar("blockLeaveRoom", false);
+                GlobalObjects_UW_setVar("isInDialogue", false);
+                GlobalObjects_UW_setVar("isDialMini", false);
+                GlobalObjects_UW_setVar("isInCharacterCreation", false);
+                GlobalObjects_UW_setVar("isInTraitsShop", false);
+                GlobalObjects_UW_setVar("isInitialized", false);
+                GlobalObjects_UW_setVar("isInClothesShop", false);
+                GlobalObjects_UW_setVar("isChangingScene", false);
+                GlobalObjects_UW_setVar("changeSceneCheckEvents", false);
+                GlobalObjects_UW_setVar("spawnInt", 1);
+                GlobalObjects_UW_setVar("volume_Master", 1f);
+                GlobalObjects_UW_setVar("volume_Music", 0.4f);
+                GlobalObjects_UW_setVar("volume_MoansFemale", 1f);
+                GlobalObjects_UW_setVar("volume_MoansMale", 0.3f);
+                GlobalObjects_UW_setVar("volume_Effects", 0.8f);
+                GlobalObjects_UW_setVar("volume_Environment", 0.5f);
+                GlobalObjects_UW_setVar("dialTransparentVal", 1f);
+                GlobalObjects_UW_setVar("loadedSlot", 0);
+                GlobalObjects_UW_setVarEnum("loadedSaveType", "ESaveType.Normal");
+                GlobalObjects_UW_setVar("isTimeStopped", false);
+                GlobalObjects_UW_setVar("curAnimSpeed", 1f);
+                GlobalObjects_UW_setVar("curAnimSpeedState", 0);
+                GlobalObjects_UW_setVar("curAnimSpeedStateStr", "");
+                GlobalObjects_UW_setVar("useEcho", false);
+                GlobalObjects_UW_setVar("errID", 0);
+                GlobalObjects_UW_setVar("isErrorLoaded", false);
+                GlobalObjects_UW_setVar("lastRand", 0);
             }*/
 
             try
             {
-                // your settings
                 GlobalObjects_UW.isDevBuild = true;
-                GlobalObjects_UW.isVersionCheats = true;
-                GlobalObjects_UW.isVersionExtended = true;
-                GlobalObjects_UW.isSuperDebugging = true;
-                GlobalObjects_UW.isDebugMode = false;
-                GlobalObjects_UW.showInternalDebug = false;
-                GlobalObjects_UW.cheatsOn = true;
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
             }
+
+            try
+            {
+                GlobalObjects_UW.isVersionCheats = true;
+            }
+            catch (Exception e)
+            {
+            }
+
+            try
+            {
+                GlobalObjects_UW.isVersionExtended = true;
+            }
+            catch (Exception e)
+            {
+            }
+
+            try
+            {
+                GlobalObjects_UW.isDebugMode = true;
+            }
+            catch (Exception e)
+            {
+            }
+
+            try
+            {
+                GlobalObjects_UW.showInternalDebug = true;
+            }
+            catch (Exception e)
+            {
+            }
+
+            try
+            {
+                GlobalObjects_UW.forceDickType = EDickType.None;
+            }
+            catch (Exception e)
+            {
+            }
+        }
+
+        static void GlobalObjects_UW_cctor_run()
+        {
+            setOldSettings();
+            GlobalObjects_UW_setVar("showDevDebug", true);
+            GlobalObjects_UW_setVar("isDevBuild", true);
+            GlobalObjects_UW_setVar("isDebugMode", true);
+            GlobalObjects_UW_setVar("showMovePoints", true);
+            GlobalObjects_UW_setVar("ignoreChoiceReqs", true);
+            GlobalObjects_UW_setVar("overpowerStars", true);
+            GlobalObjects_UW_setVar("accessAllClothes", true);
+            GlobalObjects_UW_setVar("maxLuck", true);
+            GlobalObjects_UW_setVar("pregnancyInfoCheat", true);
+            GlobalObjects_UW_setVar("cheatsOn", true);
+            GlobalObjects_UW_setVar("isVersionCheats", true);
+            GlobalObjects_UW_setVar("isVersionExtended", true);
+            GlobalObjects_UW_setVar("showInternalDebug", true);
+            GlobalObjects_UW_setVar("isFurries", true);
+            GlobalObjects_UW_setVar("isSuperDebugging", true);
+            GlobalObjects_UW_setVar("allowCumShake", true);
+            GlobalObjects_UW_setVar("stopTimeFlow", true);
+            GlobalObjects_UW_setVar("dontCleanSperm", true);
+            GlobalObjects_UW_setVar("isRandomNPCSize", true);
+            GlobalObjects_UW_setVar("disableScreenFade", true);
+            GlobalObjects_UW_setVar("eyesOverHairs", true);
+            GlobalObjects_UW_setVar("pregnantBelly", true);
+            GlobalObjects_UW_setVar("disablePregnancy", true);
+            GlobalObjects_UW_setVar("hidePregnantBelly", true);;
+            GlobalObjects_UW_setVarEnum("forceDickType", "EDickType.None");
 
             Console.WriteLine("Load cctor from GlobalObjects_UW");
             Logger.LogInfo($"Load cctor from GlobalObjects_UW");
         }
 
-        public override string ToString()
+        static object getEnum(string enumtype, string enumkey)
         {
-            return base.ToString();
+            string message = null;
+
+            Type type = null;
+
+            try
+            {
+                // Get the type of the object
+                type = MyGetType(enumtype);
+            }
+            catch (Exception e)
+            {
+                message = e.ToString();
+                Console.WriteLine(message);
+                Logger.LogInfo(message);
+                return null;
+            }
+
+            string className = enumtype;
+            if (type == null)
+            {
+                message = "enum " + className + " not found, the dev have removed it!";
+                Console.WriteLine(message);
+                Logger.LogInfo(message);
+                return null;
+            }
+
+            // Validate that the type is actually an enum
+            if (!type.IsEnum)
+            {
+                Console.WriteLine("Provided type is not an enum.");
+                message = "Provided type is not an enum.";
+                Console.WriteLine(message);
+                Logger.LogInfo(message);
+                return null;
+            }
+
+            // Validate that the enum value exists
+            if (!Enum.IsDefined(type, enumkey))
+            {
+                message = $"'{enumkey}' is not a valid value for {type.Name}.";
+                Logger.LogInfo(message);
+                return null;
+            }
+
+            try
+            {
+
+                // Get the enum value object
+                object enumValue = Enum.Parse(type, enumkey);
+
+                // Get the underlying numeric value using reflection
+                object numericValue = Convert.ChangeType(enumValue, Enum.GetUnderlyingType(type));
+
+                return numericValue;
+            }
+            catch (Exception e)
+            {
+                message = e.ToString();
+                Console.WriteLine(message);
+                Logger.LogInfo(message);
+                return null;
+            }
+            
+            return null;
         }
 
-        public override int GetHashCode()
+        static string[] getEnumString(string typeValue)
         {
-            return base.GetHashCode();
+            char separator = '.';
+
+            if (typeValue == null)
+            {
+                return null;
+            }
+
+            if (typeValue.Length == 0) { 
+                return null; 
+            }
+
+            if (!typeValue.Contains(""+separator))
+            {
+                return null;
+            }
+
+            // Split the string
+            string[] parts = typeValue.Split(separator);
+            if(parts.Length < 2)
+            {
+                return null;
+            }
+
+            string lastpath = parts[1];
+            
+            for (int i = 2; i < parts.Length; i++)
+            {
+                lastpath = lastpath + "." + parts[i];
+            }
+
+            parts[1] = lastpath;
+
+            return new string[]
+            {
+                parts[0],
+                parts[1]
+            };
         }
 
-        public override bool Equals(object other)
+        static void GlobalObjects_UW_setVarEnum(string field, string enumvalue)
         {
-            return base.Equals(other);
+            string[] enumparts = getEnumString(enumvalue);
+            string message = null;
+            if (enumparts == null)
+            {
+                message = enumvalue + " is not a valid enum name";
+                Console.WriteLine(message);
+                Logger.LogInfo(message);
+                return;
+            }
+
+            string enumtype = enumparts[0];
+            string enumkey = enumparts[1];
+
+            object value = getEnum(enumtype, enumkey);
+            if (value == null)
+            {
+                message = enumtype + " " + enumkey + " is not a valid enum";
+                Console.WriteLine(message);
+                Logger.LogInfo(message);
+                return;
+            }
+
+            GlobalObjects_UW_setVar(field, value);
+        }
+
+        static void GlobalObjects_UW_setVar(string field, object value)
+        {
+            string className = "GlobalObjects_UW";
+            Type myType1 = MyGetType(className);
+            if (myType1 == null)
+            {
+                throw new Exception("class " + className + " not found, the dev have removed it!");
+            }
+
+            try
+            {
+                // Get the FieldInfo for the public static field
+                FieldInfo fieldInfo = myType1.GetField(
+                    field,
+                    BindingFlags.Public | BindingFlags.Static
+                );
+
+                if (fieldInfo == null)
+                {
+                    throw new Exception("field " + field + " not found, the dev have removed it!");
+                }
+
+                fieldInfo.SetValue(null, value);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+                Logger.LogInfo(e.ToString());
+            }
+        }
+
+        static object GlobalObjects_UW_getVar(string field)
+        {
+            string className = "GlobalObjects_UW";
+            Type myType1 = MyGetType(className);
+            if (myType1 == null)
+            {
+                throw new Exception("class " + className + " not found, the dev have removed it!");
+            }
+
+            try
+            {
+                // Get the FieldInfo for the public static field
+                FieldInfo fieldInfo = myType1.GetField(
+                    field,
+                    BindingFlags.Public | BindingFlags.Static
+                );
+
+                if (fieldInfo == null)
+                {
+                    throw new Exception("field " + field + " not found, the dev have removed it!");
+                }
+
+                return fieldInfo.GetValue(null);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+                Logger.LogInfo(e.ToString());
+                return null;
+            }
         }
     }
 }
