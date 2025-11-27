@@ -8,6 +8,7 @@ for devs:
 too update the plugin add the Assembly-Csharp.dll in visual studio , you can find the assembly in UiTC_Data\Managed\Assembly-CSharp.dll
 
 bin\Release\AlwaysBeNaked.dll copy to BepInEx\plugins
+
 bin\Debug\AlwaysBeNaked.dll copy to BepInEx\plugins
 
 also important is JetBrains DotPeek to open the assembly Assembly-Csharp.dll 
